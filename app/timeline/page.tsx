@@ -3,6 +3,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { Project } from "@/lib/types";
 
 const BRAND_COLORS: [string, string][] = [
@@ -41,6 +48,108 @@ function getBrandColor(index: number): [string, string] {
 const ROW_HEIGHT = 44;
 const LABEL_WIDTH = 240;
 
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return "TBD";
+  const d = new Date(dateStr + "T00:00:00");
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+const statusLabel = (status: Project["status"]) => {
+  switch (status) {
+    case "STAGING": return "Staging";
+    case "DEVELOPING": return "Developing";
+    case "PENDING": return "Pending";
+  }
+};
+
+function GradientProgress({ value, from, to }: { value: number; from: string; to: string }) {
+  return (
+    <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+      <div
+        className="h-full rounded-full transition-all duration-500"
+        style={{ width: `${value}%`, background: `linear-gradient(90deg, ${from}, ${to})` }}
+      />
+    </div>
+  );
+}
+
+function ProjectDetail({ project, color, allProjects, colorMap }: { project: Project; color: [string, string]; allProjects: Project[]; colorMap: Map<string, [string, string]> }) {
+  const subModules = allProjects.filter(p => p.parentId === project.id);
+  const parent = project.parentId ? allProjects.find(p => p.id === project.parentId) : null;
+
+  return (
+    <>
+      {parent && (
+        <p className="mb-2 text-xs text-muted-foreground">
+          Sub-module of <span className="font-medium text-foreground">{parent.title}</span>
+        </p>
+      )}
+
+      <div className="flex items-center gap-3 mb-4">
+        <span
+          className="inline-block rounded-full px-3 py-1 text-xs font-semibold text-white"
+          style={{ background: `linear-gradient(135deg, ${color[0]}, ${color[1]})` }}
+        >
+          {statusLabel(project.status)}
+        </span>
+        <span className="ml-auto text-2xl font-bold tabular-nums" style={{ color: color[0] }}>
+          {project.progress}%
+        </span>
+      </div>
+
+      <GradientProgress value={project.progress} from={color[0]} to={color[1]} />
+
+      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+        <span>{formatDate(project.startDate)} &rarr; {formatDate(project.endDate)}</span>
+        {project.launchDate && (
+          <span className="font-medium" style={{ color: color[0] }}>Launch {formatDate(project.launchDate)}</span>
+        )}
+      </div>
+
+      <p className="mt-4 leading-7 text-foreground/80">{project.description}</p>
+
+      <div className="mt-4 rounded-xl p-4" style={{ background: `${color[0]}0d` }}>
+        <p className="font-semibold" style={{ color: color[0] }}>Why this matters</p>
+        <p className="mt-1 text-sm leading-relaxed text-foreground/80">{project.why}</p>
+      </div>
+
+      {subModules.length > 0 && (
+        <>
+          <Separator className="my-5" />
+          <div>
+            <p className="text-sm font-semibold mb-3">Modules of this project</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {subModules.map((sub) => {
+                const subColor = colorMap.get(sub.id) || color;
+                return (
+                  <div key={sub.id} className="relative overflow-hidden rounded-lg border p-3">
+                    <div className="absolute inset-y-0 left-0 w-1" style={{ background: `linear-gradient(180deg, ${subColor[0]}, ${subColor[1]})` }} />
+                    <div className="pl-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium">{sub.title}</p>
+                        <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ background: `linear-gradient(135deg, ${subColor[0]}, ${subColor[1]})` }}>
+                          {statusLabel(sub.status)}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="flex-1">
+                          <GradientProgress value={sub.progress} from={subColor[0]} to={subColor[1]} />
+                        </div>
+                        <span className="text-xs font-bold tabular-nums" style={{ color: subColor[0] }}>{sub.progress}%</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 type MonthCol = { year: number; month: number; label: string };
 
 function getMonthsBetween(start: Date, end: Date): MonthCol[] {
@@ -76,6 +185,7 @@ function dayOffset(date: Date, origin: Date): number {
 export default function TimelinePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeYear, setActiveYear] = useState<number | "all">("all");
+  const [selected, setSelected] = useState<Project | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -164,7 +274,8 @@ export default function TimelinePage() {
 
   // Build index map for consistent colors
   const indexMap = new Map<string, number>();
-  projects.forEach((p, i) => indexMap.set(p.id, i));
+  const colorMap = new Map<string, [string, string]>();
+  projects.forEach((p, i) => { indexMap.set(p.id, i); colorMap.set(p.id, getBrandColor(i)); });
 
   return (
     <div className="min-h-screen">
@@ -229,8 +340,9 @@ export default function TimelinePage() {
                 return (
                   <div
                     key={p.id}
-                    className="flex items-center gap-2.5 border-b px-4"
+                    className="flex items-center gap-2.5 border-b px-4 cursor-pointer hover:bg-muted/50 transition-colors"
                     style={{ height: ROW_HEIGHT }}
+                    onClick={() => setSelected(p)}
                   >
                     <span
                       className="size-2.5 shrink-0 rounded-full"
@@ -335,7 +447,8 @@ export default function TimelinePage() {
                       >
                         {/* Bar */}
                         <div
-                          className="absolute top-2 flex items-center rounded-full shadow-sm"
+                          onClick={() => setSelected(p)}
+                          className="absolute top-2 flex items-center rounded-full shadow-sm cursor-pointer hover:brightness-110 transition-all"
                           style={{
                             left: barLeft,
                             width: barWidth,
@@ -373,7 +486,7 @@ export default function TimelinePage() {
         </div>
 
         {/* Legend */}
-        <div className="mt-4 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-8 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-300" />
             <span>Development period</span>
@@ -389,6 +502,24 @@ export default function TimelinePage() {
             </div>
           )}
         </div>
+
+        <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+          <DialogContent className="max-h-[85vh] w-[95vw] max-w-[900px] overflow-y-auto p-6">
+            {selected && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>{selected.title}</DialogTitle>
+                </DialogHeader>
+                <ProjectDetail
+                  project={selected}
+                  color={colorMap.get(selected.id) || getBrandColor(0)}
+                  allProjects={projects}
+                  colorMap={colorMap}
+                />
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
