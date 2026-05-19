@@ -31,6 +31,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
 
+        <footer className="py-6 text-center text-xs text-muted-foreground/40">
+          Developed with <span className="inline-block text-red-500" aria-label="love">&#9829;</span> by{' '}
+          <a href="https://marzyn.com" target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">Marzyn</a>
+        </footer>
+
         <Toaster position="bottom-right" />
         <ReactGrep />
       </body>

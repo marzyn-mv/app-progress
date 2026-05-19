@@ -241,8 +241,8 @@ export default function TimelinePage() {
   let rangeEnd: Date;
 
   if (activeYear === "all") {
-    rangeStart = new Date(2026, 1, 1);  // Feb 2026
-    rangeEnd = new Date(2027, 2, 31);   // Mar 2027
+    rangeStart = new Date(2026, 1, 1);   // Feb 2026
+    rangeEnd = new Date(2027, 2, 31);    // Mar 2027
   } else {
     rangeStart = new Date(activeYear, 0, 1);
     rangeEnd = new Date(activeYear, 11, 31);
