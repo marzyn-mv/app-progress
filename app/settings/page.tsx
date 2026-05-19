@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-const DEPARTMENTS_KEY = 'kcc-departments';
 const DEFAULT_DEPARTMENTS = ['IT', 'Finance', 'HR', 'Legal', 'Operations'];
 
 export default function SettingsPage() {
@@ -15,16 +14,21 @@ export default function SettingsPage() {
   const [newDept, setNewDept] = useState('');
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = window.localStorage.getItem(DEPARTMENTS_KEY);
-    if (stored) {
-      setDepartments(JSON.parse(stored));
-    }
+    fetch('/api/departments')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setDepartments(data);
+      })
+      .catch(() => {});
   }, []);
 
-  const save = (next: string[]) => {
+  const save = async (next: string[]) => {
     setDepartments(next);
-    window.localStorage.setItem(DEPARTMENTS_KEY, JSON.stringify(next));
+    await fetch('/api/departments', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(next),
+    });
   };
 
   const handleAdd = () => {

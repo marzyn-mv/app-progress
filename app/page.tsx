@@ -33,42 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-type Task = {
-  id: string;
-  label: string;
-  done: boolean;
-  startDate: string;
-  endDate: string;
-  remarks: string;
-  department: string;
-};
-
-type Phase = {
-  tasks: Task[];
-};
-
-type ActionPoint = {
-  id: string;
-  text: string;
-  department: string;
-  dueDate: string;
-};
-
-type Project = {
-  id: string;
-  title: string;
-  status: 'PENDING' | 'DEVELOPING' | 'STAGING';
-  progress: number;
-  startDate: string;
-  endDate: string;
-  launchDate: string;
-  description: string;
-  why: string;
-  actionPoints: ActionPoint[];
-  departments: string[];
-  phase1: Phase;
-  phase2: Phase;
-};
+import type { Task, Project } from '@/lib/types';
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return 'TBD';
@@ -107,9 +72,6 @@ const initialProject: Project = {
   },
 };
 
-const PUBLISHED_KEY = 'kcc-published-project';
-const PROJECTS_KEY = 'kcc-projects';
-const DEPARTMENTS_KEY = 'kcc-departments';
 const DEFAULT_DEPARTMENTS = ['IT', 'Finance', 'HR', 'Legal', 'Operations'];
 
 const createNewProject = (): Project => ({
@@ -147,48 +109,32 @@ export default function HomePage() {
   const [departments, setDepartments] = useState<string[]>(DEFAULT_DEPARTMENTS);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const storedProjects = window.localStorage.getItem(PROJECTS_KEY);
-    const storedPublishedAt = window.localStorage.getItem(`${PUBLISHED_KEY}-at`);
-
-    if (storedProjects) {
-      const parsed = (JSON.parse(storedProjects) as Project[]).map((p) => ({
-        ...p,
-        actionPoints: (p.actionPoints ?? []).map((ap) => ({ ...ap, department: ap.department ?? '', dueDate: ap.dueDate ?? '' })),
-        departments: p.departments ?? [],
-        phase1: { tasks: (p.phase1?.tasks ?? []).map((t) => ({ ...t, department: t.department ?? '' })) },
-        phase2: { tasks: (p.phase2?.tasks ?? []).map((t) => ({ ...t, department: t.department ?? '' })) },
-      }));
-      setProjects(parsed);
-      setSelectedId(parsed[0]?.id ?? initialProject.id);
-      setDraft(parsed[0] ?? initialProject);
-    }
-
-    if (storedPublishedAt) {
-      setPublishedAt(storedPublishedAt);
-    }
-
-    const storedDepts = window.localStorage.getItem(DEPARTMENTS_KEY);
-    if (storedDepts) {
-      setDepartments(JSON.parse(storedDepts));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-  }, [projects]);
-
-  // Sync departments from localStorage when settings page updates them
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === DEPARTMENTS_KEY && e.newValue) {
-        setDepartments(JSON.parse(e.newValue));
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    Promise.all([
+      fetch('/api/projects').then((r) => r.json()),
+      fetch('/api/publish').then((r) => r.json()),
+      fetch('/api/departments').then((r) => r.json()),
+    ])
+      .then(([projectsData, publishData, deptsData]) => {
+        if (Array.isArray(projectsData) && projectsData.length > 0) {
+          const parsed = projectsData.map((p: Project) => ({
+            ...p,
+            actionPoints: (p.actionPoints ?? []).map((ap) => ({ ...ap, department: ap.department ?? '', dueDate: ap.dueDate ?? '' })),
+            departments: p.departments ?? [],
+            phase1: { tasks: (p.phase1?.tasks ?? []).map((t) => ({ ...t, department: t.department ?? '' })) },
+            phase2: { tasks: (p.phase2?.tasks ?? []).map((t) => ({ ...t, department: t.department ?? '' })) },
+          }));
+          setProjects(parsed);
+          setSelectedId(parsed[0].id);
+          setDraft(parsed[0]);
+        }
+        if (publishData?.publishedAt) {
+          setPublishedAt(publishData.publishedAt);
+        }
+        if (Array.isArray(deptsData)) {
+          setDepartments(deptsData);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleSelectProject = useCallback(
@@ -276,6 +222,11 @@ export default function HomePage() {
     setProjects((current) => [newProject, ...current]);
     setSelectedId(newProject.id);
     setDraft(newProject);
+    fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newProject),
+    });
     toast.success('New project created. Start editing its details below.');
   };
 
@@ -294,6 +245,11 @@ export default function HomePage() {
       });
       setSelectedId(clone.id);
       setDraft(clone);
+      fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(clone),
+      });
       toast.success(`Duplicated "${source.title}".`);
     },
     [projects]
@@ -313,6 +269,7 @@ export default function HomePage() {
         setSelectedId(next[newIndex].id);
         setDraft(next[newIndex]);
       }
+      fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
       toast.success('Project deleted.');
     },
     [projects, selectedId]
@@ -323,7 +280,12 @@ export default function HomePage() {
     setProjects((current) =>
       current.map((project) => (project.id === draft.id ? draft : project))
     );
-    toast.success('Project saved locally. Publish when ready.');
+    fetch(`/api/projects/${draft.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draft),
+    });
+    toast.success('Project saved. Publish when ready.');
   };
 
   const handlePublish = () => {
@@ -339,8 +301,16 @@ export default function HomePage() {
       minute: '2-digit',
     });
     setPublishedAt(timestamp);
-    window.localStorage.setItem(PUBLISHED_KEY, JSON.stringify(draft));
-    window.localStorage.setItem(`${PUBLISHED_KEY}-at`, timestamp);
+    fetch(`/api/projects/${draft.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draft),
+    });
+    fetch('/api/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project: draft, publishedAt: timestamp }),
+    });
     toast.success('Published to the shared dashboard.');
   };
 

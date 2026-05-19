@@ -5,44 +5,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-
-type Task = {
-  id: string;
-  label: string;
-  done: boolean;
-  startDate?: string;
-  endDate?: string;
-  remarks?: string;
-  department?: string;
-};
-
-type Phase = {
-  tasks: Task[];
-};
-
-type ActionPoint = {
-  id: string;
-  text: string;
-  department?: string;
-  dueDate?: string;
-};
-
-type Project = {
-  title: string;
-  status: 'PENDING' | 'DEVELOPING' | 'STAGING';
-  progress: number;
-  startDate: string;
-  endDate: string;
-  launchDate: string;
-  description: string;
-  why: string;
-  actionPoints?: ActionPoint[];
-  departments?: string[];
-  phase1?: Phase;
-  phase2?: Phase;
-};
-
-const PUBLISHED_KEY = 'kcc-published-project';
+import type { Project } from '@/lib/types';
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return 'TBD';
@@ -66,12 +29,12 @@ export default function DashboardPage() {
   const [published, setPublished] = useState<Project | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const storedProject = window.localStorage.getItem(PUBLISHED_KEY);
-    if (storedProject) {
-      setPublished(JSON.parse(storedProject));
-    }
+    fetch('/api/publish')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.project) setPublished(data.project);
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -140,7 +103,7 @@ export default function DashboardPage() {
                   <div className="mt-4">
                     <p className="text-sm font-semibold">Actions</p>
                     <ul className="mt-2 list-disc pl-5 space-y-1">
-                      {published.actionPoints!.map((ap) => (
+                      {published.actionPoints.map((ap) => (
                         <li key={ap.id} className="text-sm text-foreground/80">
                           {ap.text || 'Untitled action'}
                           {ap.department && (
@@ -164,7 +127,7 @@ export default function DashboardPage() {
                   <div className="mt-4">
                     <p className="text-sm font-semibold">Phase 1</p>
                     <ul className="mt-2 space-y-2">
-                      {published.phase1!.tasks.map((task) => (
+                      {published.phase1.tasks.map((task) => (
                         <li key={task.id} className="text-sm">
                           <div className="flex items-center gap-2">
                             <span
@@ -183,7 +146,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="ml-6 mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                             {(task.startDate || task.endDate) && (
-                              <span>{formatDate(task.startDate ?? '')} → {formatDate(task.endDate ?? '')}</span>
+                              <span>{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
                             )}
                             {task.remarks && <span className="italic">{task.remarks}</span>}
                           </div>
@@ -202,7 +165,7 @@ export default function DashboardPage() {
                   <div className="mt-4">
                     <p className="text-sm font-semibold">Phase 2</p>
                     <ul className="mt-2 space-y-2">
-                      {published.phase2!.tasks.map((task) => (
+                      {published.phase2.tasks.map((task) => (
                         <li key={task.id} className="text-sm">
                           <div className="flex items-center gap-2">
                             <span
@@ -221,7 +184,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="ml-6 mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                             {(task.startDate || task.endDate) && (
-                              <span>{formatDate(task.startDate ?? '')} → {formatDate(task.endDate ?? '')}</span>
+                              <span>{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
                             )}
                             {task.remarks && <span className="italic">{task.remarks}</span>}
                           </div>
