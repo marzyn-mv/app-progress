@@ -1,10 +1,16 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { Project } from '@/lib/types';
 
 const formatDate = (dateStr: string) => {
@@ -25,14 +31,135 @@ const statusVariant = (status: Project['status']) => {
   }
 };
 
+function ProjectDetail({ project }: { project: Project }) {
+  return (
+    <>
+      <Badge variant={statusVariant(project.status)} className="mb-4">
+        {project.status}
+      </Badge>
+
+      <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
+        <span>{formatDate(project.startDate)} → {formatDate(project.endDate)}</span>
+        <span className="font-medium text-primary">Launch {formatDate(project.launchDate)}</span>
+      </div>
+
+      <p className="mt-4 leading-7 text-foreground/80">{project.description}</p>
+
+      <div className="mt-4" role="status" aria-label={`Progress: ${project.progress}%`}>
+        <Progress value={project.progress} aria-label="Project progress">
+          <ProgressLabel>Progress</ProgressLabel>
+          <ProgressValue />
+        </Progress>
+      </div>
+
+      <div className="mt-4 rounded-xl bg-indigo-500/8 p-4">
+        <p className="font-semibold">Why this matters:</p>
+        <p className="mt-1 text-sm leading-relaxed text-foreground/80">{project.why}</p>
+      </div>
+
+      {(project.actionPoints?.length ?? 0) > 0 && (
+        <div className="mt-4">
+          <p className="text-sm font-semibold">Actions</p>
+          <ul className="mt-2 list-disc pl-5 space-y-1">
+            {project.actionPoints.map((ap) => (
+              <li key={ap.id} className="text-sm text-foreground/80">
+                {ap.text || 'Untitled action'}
+                {ap.department && (
+                  <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">{ap.department}</Badge>
+                )}
+                {ap.dueDate && (
+                  <span className="ml-2 text-xs text-muted-foreground">Due {formatDate(ap.dueDate)}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {((project.phase1?.tasks.length ?? 0) > 0 ||
+        (project.phase2?.tasks.length ?? 0) > 0) && (
+        <Separator className="my-4" />
+      )}
+
+      {(project.phase1?.tasks.length ?? 0) > 0 && (
+        <div className="mt-4">
+          <p className="text-sm font-semibold">Phase 1</p>
+          <ul className="mt-2 space-y-2">
+            {project.phase1.tasks.map((task) => (
+              <li key={task.id} className="text-sm">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`size-4 shrink-0 rounded-full border ${
+                      task.done ? 'border-green-500 bg-green-500' : 'border-muted-foreground/40'
+                    }`}
+                  />
+                  <span className={task.done ? 'text-muted-foreground line-through' : ''}>
+                    {task.label || 'Untitled task'}
+                  </span>
+                  {task.department && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">{task.department}</Badge>
+                  )}
+                </div>
+                <div className="ml-6 mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                  {(task.startDate || task.endDate) && (
+                    <span>{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
+                  )}
+                  {task.remarks && <span className="italic">{task.remarks}</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {(project.phase1?.tasks.length ?? 0) > 0 &&
+        (project.phase2?.tasks.length ?? 0) > 0 && (
+        <Separator className="my-4" />
+      )}
+
+      {(project.phase2?.tasks.length ?? 0) > 0 && (
+        <div className="mt-4">
+          <p className="text-sm font-semibold">Phase 2</p>
+          <ul className="mt-2 space-y-2">
+            {project.phase2.tasks.map((task) => (
+              <li key={task.id} className="text-sm">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`size-4 shrink-0 rounded-full border ${
+                      task.done ? 'border-green-500 bg-green-500' : 'border-muted-foreground/40'
+                    }`}
+                  />
+                  <span className={task.done ? 'text-muted-foreground line-through' : ''}>
+                    {task.label || 'Untitled task'}
+                  </span>
+                  {task.department && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">{task.department}</Badge>
+                  )}
+                </div>
+                <div className="ml-6 mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                  {(task.startDate || task.endDate) && (
+                    <span>{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
+                  )}
+                  {task.remarks && <span className="italic">{task.remarks}</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function HomePage() {
-  const [published, setPublished] = useState<Project | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selected, setSelected] = useState<Project | null>(null);
 
   useEffect(() => {
-    fetch('/api/publish')
+    fetch('/api/projects')
       .then((res) => res.json())
       .then((data) => {
-        if (data?.project) setPublished(data.project);
+        if (Array.isArray(data)) setProjects(data);
       })
       .catch(() => {});
   }, []);
@@ -49,165 +176,55 @@ export default function HomePage() {
         </p>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card aria-label="Published project">
-          <CardHeader>
-            <CardTitle>Published project</CardTitle>
-            {published && (
-              <CardAction>
-                <span
-                  className="text-2xl font-bold tabular-nums text-primary"
-                  aria-label={`${published.progress}% complete`}
-                >
-                  {published.progress}%
-                </span>
-              </CardAction>
-            )}
-          </CardHeader>
-          <CardContent>
-            {published ? (
-              <>
-                <Badge variant={statusVariant(published.status)} className="mb-4">
-                  {published.status}
-                </Badge>
-
-                <h3 className="text-xl font-semibold">{published.title}</h3>
-
-                <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-                  <span>{formatDate(published.startDate)} → {formatDate(published.endDate)}</span>
-                  <span className="font-medium text-primary">Launch {formatDate(published.launchDate)}</span>
+      {projects.length === 0 ? (
+        <div className="rounded-xl bg-destructive/8 p-6 text-center text-destructive" role="status">
+          <p>No projects yet. Add a project from the settings page.</p>
+        </div>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {projects.map((project) => (
+            <Card
+              key={project.id}
+              className="cursor-pointer transition-shadow hover:shadow-lg"
+              onClick={() => setSelected(project)}
+            >
+              <CardHeader>
+                <CardTitle className="text-lg">{project.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-3 flex items-center gap-2">
+                  <Badge variant={statusVariant(project.status)}>{project.status}</Badge>
+                  <span className="ml-auto text-xl font-bold tabular-nums text-primary">
+                    {project.progress}%
+                  </span>
                 </div>
-
-                <p className="mt-4 leading-7 text-foreground/80">{published.description}</p>
-
-                <div
-                  className="mt-4"
-                  role="status"
-                  aria-label={`Progress: ${published.progress}%`}
-                >
-                  <Progress value={published.progress} aria-label="Project progress">
-                    <ProgressLabel>Progress</ProgressLabel>
-                    <ProgressValue />
-                  </Progress>
-                </div>
-
-                <div className="mt-4 rounded-xl bg-indigo-500/8 p-4">
-                  <p className="font-semibold">Why this matters:</p>
-                  <p className="mt-1 text-sm leading-relaxed text-foreground/80">
-                    {published.why}
-                  </p>
-                </div>
-
-                {(published.actionPoints?.length ?? 0) > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm font-semibold">Actions</p>
-                    <ul className="mt-2 list-disc pl-5 space-y-1">
-                      {published.actionPoints.map((ap) => (
-                        <li key={ap.id} className="text-sm text-foreground/80">
-                          {ap.text || 'Untitled action'}
-                          {ap.department && (
-                            <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">{ap.department}</Badge>
-                          )}
-                          {ap.dueDate && (
-                            <span className="ml-2 text-xs text-muted-foreground">Due {formatDate(ap.dueDate)}</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {((published.phase1?.tasks.length ?? 0) > 0 ||
-                  (published.phase2?.tasks.length ?? 0) > 0) && (
-                  <Separator className="my-4" />
-                )}
-
-                {(published.phase1?.tasks.length ?? 0) > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm font-semibold">Phase 1</p>
-                    <ul className="mt-2 space-y-2">
-                      {published.phase1.tasks.map((task) => (
-                        <li key={task.id} className="text-sm">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`size-4 shrink-0 rounded-full border ${
-                                task.done
-                                  ? 'border-green-500 bg-green-500'
-                                  : 'border-muted-foreground/40'
-                              }`}
-                            />
-                            <span className={task.done ? 'text-muted-foreground line-through' : ''}>
-                              {task.label || 'Untitled task'}
-                            </span>
-                            {task.department && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">{task.department}</Badge>
-                            )}
-                          </div>
-                          <div className="ml-6 mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                            {(task.startDate || task.endDate) && (
-                              <span>{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
-                            )}
-                            {task.remarks && <span className="italic">{task.remarks}</span>}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {(published.phase1?.tasks.length ?? 0) > 0 &&
-                  (published.phase2?.tasks.length ?? 0) > 0 && (
-                  <Separator className="my-4" />
-                )}
-
-                {(published.phase2?.tasks.length ?? 0) > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm font-semibold">Phase 2</p>
-                    <ul className="mt-2 space-y-2">
-                      {published.phase2.tasks.map((task) => (
-                        <li key={task.id} className="text-sm">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`size-4 shrink-0 rounded-full border ${
-                                task.done
-                                  ? 'border-green-500 bg-green-500'
-                                  : 'border-muted-foreground/40'
-                              }`}
-                            />
-                            <span className={task.done ? 'text-muted-foreground line-through' : ''}>
-                              {task.label || 'Untitled task'}
-                            </span>
-                            {task.department && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">{task.department}</Badge>
-                            )}
-                          </div>
-                          <div className="ml-6 mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                            {(task.startDate || task.endDate) && (
-                              <span>{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
-                            )}
-                            {task.remarks && <span className="italic">{task.remarks}</span>}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div
-                className="rounded-xl bg-destructive/8 p-6 text-center text-destructive"
-                role="status"
-                aria-label="No published project"
-              >
-                <p>
-                  No project has been published yet. Publish a project from the editor to make it
-                  visible here.
+                <Progress value={project.progress} aria-label="Project progress">
+                  <ProgressValue />
+                </Progress>
+                <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
+                  {project.description}
                 </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Launch {formatDate(project.launchDate)}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="max-h-[85vh] w-[95vw] max-w-[900px] overflow-y-auto p-6">
+          {selected && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selected.title}</DialogTitle>
+              </DialogHeader>
+              <ProjectDetail project={selected} />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

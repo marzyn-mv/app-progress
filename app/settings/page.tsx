@@ -11,6 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -254,6 +260,7 @@ function EditorSection({ departments }: { departments: string[] }) {
   const [selectedId, setSelectedId] = useState<string>(initialProject.id);
   const [draft, setDraft] = useState<Project>(initialProject);
   const [publishedAt, setPublishedAt] = useState<string>('');
+  const [formOpen, setFormOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -286,7 +293,7 @@ function EditorSection({ departments }: { departments: string[] }) {
       if (!project) return;
       setSelectedId(projectId);
       setDraft(project);
-      toast.info('Editing selected project.');
+      setFormOpen(true);
     },
     [projects]
   );
@@ -365,12 +372,12 @@ function EditorSection({ departments }: { departments: string[] }) {
     setProjects((current) => [newProject, ...current]);
     setSelectedId(newProject.id);
     setDraft(newProject);
+    setFormOpen(true);
     fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newProject),
     });
-    toast.success('New project created. Start editing its details below.');
   };
 
   const handleDuplicateProject = useCallback(
@@ -388,6 +395,7 @@ function EditorSection({ departments }: { departments: string[] }) {
       });
       setSelectedId(clone.id);
       setDraft(clone);
+      setFormOpen(true);
       fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -428,7 +436,8 @@ function EditorSection({ departments }: { departments: string[] }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(draft),
     });
-    toast.success('Project saved. Publish when ready.');
+    setFormOpen(false);
+    toast.success('Project saved.');
   };
 
   const handlePublish = () => {
@@ -454,453 +463,69 @@ function EditorSection({ departments }: { departments: string[] }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ project: draft, publishedAt: timestamp }),
     });
+    setFormOpen(false);
     toast.success('Published to the shared dashboard.');
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      {/* Editor Card */}
+    <>
       <Card>
         <CardHeader>
-          <CardTitle>Edit project</CardTitle>
+          <CardTitle>Projects</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Project selector */}
-          <div className="mb-5">
-            <div className="mb-3 flex justify-end">
-              <Button variant="outline" size="sm" onClick={handleCreateProject}>
-                + New project
-              </Button>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead className="w-[60px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projects.map((project) => (
-                  <TableRow
-                    key={project.id}
-                    className={project.id === selectedId ? 'bg-muted' : ''}
-                  >
-                    <TableCell className="font-medium">{project.title}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant(project.status)}>{project.status}</Badge>
-                    </TableCell>
-                    <TableCell>{project.progress}%</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={<Button variant="ghost" size="icon-xs" aria-label={`Actions for ${project.title}`} />}
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleSelectProject(project.id)}>
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicateProject(project.id)}>
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => handleDeleteProject(project.id)}
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="mb-3 flex justify-end">
+            <Button variant="outline" size="sm" onClick={handleCreateProject}>
+              + New project
+            </Button>
           </div>
-
-          <Separator className="mb-5" />
-
-          {/* Form */}
-          <form onSubmit={handleSave} aria-label="Project editor form">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Project title</Label>
-                <Input
-                  id="title"
-                  value={draft.title}
-                  onChange={(e) => handleChange('title', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={draft.status}
-                  onValueChange={(val) => handleChange('status', val as string)}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Progress</TableHead>
+                <TableHead className="w-[60px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {projects.map((project) => (
+                <TableRow
+                  key={project.id}
+                  className={project.id === selectedId ? 'bg-muted' : ''}
                 >
-                  <SelectTrigger id="status" className="w-full" aria-label="Project status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PENDING">PENDING</SelectItem>
-                    <SelectItem value="DEVELOPING">DEVELOPING</SelectItem>
-                    <SelectItem value="STAGING">STAGING</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="progress">Progress (%)</Label>
-                <Input
-                  id="progress"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={draft.progress}
-                  onChange={(e) => handleChange('progress', e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={draft.startDate}
-                    onChange={(e) => handleChange('startDate', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endDate">End date</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={draft.endDate}
-                    onChange={(e) => handleChange('endDate', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="launchDate">Launch date</Label>
-                  <Input
-                    id="launchDate"
-                    type="date"
-                    value={draft.launchDate}
-                    onChange={(e) => handleChange('launchDate', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  className="min-h-[120px]"
-                  value={draft.description}
-                  onChange={(e) => handleChange('description', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="why">Why this matters</Label>
-                <Textarea
-                  id="why"
-                  className="min-h-[120px]"
-                  value={draft.why}
-                  onChange={(e) => handleChange('why', e.target.value)}
-                />
-              </div>
-
-              {/* Actions */}
-              <Separator />
-              <fieldset className="space-y-4">
-                <legend className="text-sm font-semibold">Actions</legend>
-                {draft.actionPoints.map((ap) => (
-                  <div key={ap.id} className="rounded-lg border border-border/50 p-3 space-y-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Action</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={ap.text}
-                          placeholder="Action"
-                          onChange={(e) => handleUpdateActionPoint(ap.id, e.target.value)}
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={() => handleRemoveActionPoint(ap.id)}
-                          aria-label="Remove action"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Department</Label>
-                        <Select
-                          value={ap.department}
-                          onValueChange={(val) =>
-                            setDraft((cur) => ({
-                              ...cur,
-                              actionPoints: cur.actionPoints.map((a) =>
-                                a.id === ap.id ? { ...a, department: val ?? '' } : a
-                              ),
-                            }))
-                          }
-                        >
-                          <SelectTrigger className="w-full" aria-label="Action department">
-                            <SelectValue placeholder="Select department" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">None</SelectItem>
-                            {departments.map((d) => (
-                              <SelectItem key={d} value={d}>{d}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Due date</Label>
-                        <Input
-                          type="date"
-                          value={ap.dueDate}
-                          onChange={(e) =>
-                            setDraft((cur) => ({
-                              ...cur,
-                              actionPoints: cur.actionPoints.map((a) =>
-                                a.id === ap.id ? { ...a, dueDate: e.target.value } : a
-                              ),
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddActionPoint}
-                >
-                  + Add action
-                </Button>
-              </fieldset>
-
-              {/* Phase 1 */}
-              <Separator />
-              <fieldset className="space-y-4">
-                <legend className="text-sm font-semibold">Phase 1</legend>
-                {draft.phase1.tasks.map((task) => (
-                  <div key={task.id} className="rounded-lg border border-border/50 p-3 space-y-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Task</Label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={task.done}
-                          onChange={(e) =>
-                            handleUpdateTask('phase1', task.id, { done: e.target.checked })
-                          }
-                          className="size-4 shrink-0 rounded border-input accent-primary"
-                          aria-label={`Mark "${task.label || 'task'}" as done`}
-                        />
-                        <Input
-                          value={task.label}
-                          placeholder="Task description"
-                          onChange={(e) =>
-                            handleUpdateTask('phase1', task.id, { label: e.target.value })
-                          }
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={() => handleRemoveTask('phase1', task.id)}
-                          aria-label={`Remove task "${task.label || 'task'}"`}
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 pl-6">
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Start date</Label>
-                        <Input
-                          type="date"
-                          value={task.startDate}
-                          onChange={(e) =>
-                            handleUpdateTask('phase1', task.id, { startDate: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">End date</Label>
-                        <Input
-                          type="date"
-                          value={task.endDate}
-                          onChange={(e) =>
-                            handleUpdateTask('phase1', task.id, { endDate: e.target.value })
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="pl-6 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Remarks</Label>
-                      <Input
-                        value={task.remarks}
-                        placeholder="Optional remarks"
-                        onChange={(e) =>
-                          handleUpdateTask('phase1', task.id, { remarks: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="pl-6 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Department</Label>
-                      <Select
-                        value={task.department ?? ''}
-                        onValueChange={(val) =>
-                          handleUpdateTask('phase1', task.id, { department: val ?? '' })
-                        }
+                  <TableCell className="font-medium">{project.title}</TableCell>
+                  <TableCell>
+                    <Badge variant={statusVariant(project.status)}>{project.status}</Badge>
+                  </TableCell>
+                  <TableCell>{project.progress}%</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={<Button variant="ghost" size="icon-xs" aria-label={`Actions for ${project.title}`} />}
                       >
-                        <SelectTrigger className="w-full" aria-label="Task department">
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">None</SelectItem>
-                          {departments.map((d) => (
-                            <SelectItem key={d} value={d}>{d}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAddTask('phase1')}
-                >
-                  + Add task
-                </Button>
-              </fieldset>
-
-              {/* Phase 2 */}
-              <Separator />
-              <fieldset className="space-y-4">
-                <legend className="text-sm font-semibold">Phase 2</legend>
-                {draft.phase2.tasks.map((task) => (
-                  <div key={task.id} className="rounded-lg border border-border/50 p-3 space-y-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Task</Label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={task.done}
-                          onChange={(e) =>
-                            handleUpdateTask('phase2', task.id, { done: e.target.checked })
-                          }
-                          className="size-4 shrink-0 rounded border-input accent-primary"
-                          aria-label={`Mark "${task.label || 'task'}" as done`}
-                        />
-                        <Input
-                          value={task.label}
-                          placeholder="Task description"
-                          onChange={(e) =>
-                            handleUpdateTask('phase2', task.id, { label: e.target.value })
-                          }
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={() => handleRemoveTask('phase2', task.id)}
-                          aria-label={`Remove task "${task.label || 'task'}"`}
+                        <MoreHorizontal className="size-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleSelectProject(project.id)}>
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateProject(project.id)}>
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => handleDeleteProject(project.id)}
                         >
-                          ✕
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 pl-6">
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Start date</Label>
-                        <Input
-                          type="date"
-                          value={task.startDate}
-                          onChange={(e) =>
-                            handleUpdateTask('phase2', task.id, { startDate: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">End date</Label>
-                        <Input
-                          type="date"
-                          value={task.endDate}
-                          onChange={(e) =>
-                            handleUpdateTask('phase2', task.id, { endDate: e.target.value })
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="pl-6 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Remarks</Label>
-                      <Input
-                        value={task.remarks}
-                        placeholder="Optional remarks"
-                        onChange={(e) =>
-                          handleUpdateTask('phase2', task.id, { remarks: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="pl-6 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Department</Label>
-                      <Select
-                        value={task.department ?? ''}
-                        onValueChange={(val) =>
-                          handleUpdateTask('phase2', task.id, { department: val ?? '' })
-                        }
-                      >
-                        <SelectTrigger className="w-full" aria-label="Task department">
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">None</SelectItem>
-                          {departments.map((d) => (
-                            <SelectItem key={d} value={d}>{d}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAddTask('phase2')}
-                >
-                  + Add task
-                </Button>
-              </fieldset>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Button type="submit">Save draft</Button>
-              <Button type="button" variant="secondary" onClick={handlePublish}>
-                Publish to dashboard
-              </Button>
-            </div>
-          </form>
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
           {publishedAt && (
             <p className="mt-3 text-xs text-muted-foreground" aria-live="polite">
@@ -910,119 +535,187 @@ function EditorSection({ departments }: { departments: string[] }) {
         </CardContent>
       </Card>
 
-      {/* Preview Card */}
-      <Card aria-label="Project preview">
-        <CardHeader>
-          <CardTitle>Preview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Badge variant={statusVariant(draft.status)} className="mb-4">
-            {draft.status}
-          </Badge>
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-h-[90vh] w-[95vw] max-w-[1200px] overflow-y-auto p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl">{draft.title || 'New project'}</DialogTitle>
+          </DialogHeader>
 
-          <h3 className="text-xl font-semibold">{draft.title}</h3>
-
-          <p className="mt-3 text-sm text-muted-foreground">
-            {formatDate(draft.startDate)} → {formatDate(draft.endDate)} · Launch {formatDate(draft.launchDate)}
-          </p>
-
-          <p className="mt-4 leading-7 text-foreground/80">{draft.description}</p>
-
-          <div className="mt-4" role="status" aria-label={`Progress: ${draft.progress}%`}>
-            <Progress value={draft.progress} aria-label="Project progress">
-              <ProgressLabel>Progress</ProgressLabel>
-              <ProgressValue />
-            </Progress>
-          </div>
-
-          <div className="mt-4 rounded-xl bg-indigo-500/8 p-4">
-            <p className="font-semibold">Why this matters:</p>
-            <p className="mt-1 text-sm leading-relaxed text-foreground/80">{draft.why}</p>
-          </div>
-
-          {draft.actionPoints.length > 0 && (
-            <div className="mt-4">
-              <p className="text-sm font-semibold">Actions</p>
-              <ul className="mt-2 list-disc pl-5 space-y-1">
-                {draft.actionPoints.map((ap) => (
-                  <li key={ap.id} className="text-sm text-foreground/80">
-                    {ap.text || 'Untitled action'}
-                    {ap.department && (
-                      <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">{ap.department}</Badge>
-                    )}
-                    {ap.dueDate && (
-                      <span className="ml-2 text-xs text-muted-foreground">Due {formatDate(ap.dueDate)}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+          <form onSubmit={handleSave} aria-label="Project editor form">
+            {/* ── Basic Info ── */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="title">Project title</Label>
+                <Input id="title" value={draft.title} onChange={(e) => handleChange('title', e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={draft.status} onValueChange={(val) => handleChange('status', val as string)}>
+                    <SelectTrigger id="status" className="w-full" aria-label="Project status"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PENDING">PENDING</SelectItem>
+                      <SelectItem value="DEVELOPING">DEVELOPING</SelectItem>
+                      <SelectItem value="STAGING">STAGING</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="progress">Progress (%)</Label>
+                  <Input id="progress" type="number" min={0} max={100} value={draft.progress} onChange={(e) => handleChange('progress', e.target.value)} />
+                </div>
+              </div>
             </div>
-          )}
 
-          {(draft.phase1.tasks.length > 0 || draft.phase2.tasks.length > 0) && (
-            <Separator className="my-4" />
-          )}
+            {/* ── Dates ── */}
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start date</Label>
+                <Input id="startDate" type="date" value={draft.startDate} onChange={(e) => handleChange('startDate', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endDate">End date</Label>
+                <Input id="endDate" type="date" value={draft.endDate} onChange={(e) => handleChange('endDate', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="launchDate">Launch date</Label>
+                <Input id="launchDate" type="date" value={draft.launchDate} onChange={(e) => handleChange('launchDate', e.target.value)} />
+              </div>
+            </div>
 
-          {draft.phase1.tasks.length > 0 && (
-            <div className="mt-4">
-              <p className="text-sm font-semibold">Phase 1</p>
-              <ul className="mt-2 space-y-2">
+            {/* ── Description & Why ── */}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea id="description" className="min-h-[100px]" value={draft.description} onChange={(e) => handleChange('description', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="why">Why this matters</Label>
+                <Textarea id="why" className="min-h-[100px]" value={draft.why} onChange={(e) => handleChange('why', e.target.value)} />
+              </div>
+            </div>
+
+            <Separator className="my-5" />
+
+            {/* ── Actions ── */}
+            <fieldset className="space-y-3">
+              <div className="flex items-center justify-between">
+                <legend className="text-sm font-semibold">Actions</legend>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddActionPoint}>+ Add action</Button>
+              </div>
+              {draft.actionPoints.map((ap) => (
+                <div key={ap.id} className="grid grid-cols-[1fr_auto] items-start gap-2 rounded-lg border border-border/50 p-3">
+                  <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr]">
+                    <Input value={ap.text} placeholder="Action" onChange={(e) => handleUpdateActionPoint(ap.id, e.target.value)} />
+                    <Select
+                      value={ap.department}
+                      onValueChange={(val) => setDraft((cur) => ({ ...cur, actionPoints: cur.actionPoints.map((a) => a.id === ap.id ? { ...a, department: val ?? '' } : a) }))}
+                    >
+                      <SelectTrigger className="w-full" aria-label="Department"><SelectValue placeholder="Department" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {departments.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="date"
+                      value={ap.dueDate}
+                      onChange={(e) => setDraft((cur) => ({ ...cur, actionPoints: cur.actionPoints.map((a) => a.id === ap.id ? { ...a, dueDate: e.target.value } : a) }))}
+                    />
+                  </div>
+                  <Button type="button" variant="ghost" size="icon-xs" onClick={() => handleRemoveActionPoint(ap.id)} aria-label="Remove action">✕</Button>
+                </div>
+              ))}
+            </fieldset>
+
+            <Separator className="my-5" />
+
+            {/* ── Phases side by side ── */}
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Phase 1 */}
+              <fieldset className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <legend className="text-sm font-semibold">Phase 1</legend>
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleAddTask('phase1')}>+ Add task</Button>
+                </div>
                 {draft.phase1.tasks.map((task) => (
-                  <li key={task.id} className="text-sm">
+                  <div key={task.id} className="rounded-lg border border-border/50 p-3 space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className={`size-4 shrink-0 rounded-full border ${task.done ? 'border-green-500 bg-green-500' : 'border-muted-foreground/40'}`} />
-                      <span className={task.done ? 'text-muted-foreground line-through' : ''}>
-                        {task.label || 'Untitled task'}
-                      </span>
-                      {task.department && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{task.department}</Badge>
-                      )}
+                      <input
+                        type="checkbox"
+                        checked={task.done}
+                        onChange={(e) => handleUpdateTask('phase1', task.id, { done: e.target.checked })}
+                        className="size-4 shrink-0 rounded border-input accent-primary"
+                        aria-label={`Mark "${task.label || 'task'}" as done`}
+                      />
+                      <Input value={task.label} placeholder="Task description" onChange={(e) => handleUpdateTask('phase1', task.id, { label: e.target.value })} className="flex-1" />
+                      <Button type="button" variant="ghost" size="icon-xs" onClick={() => handleRemoveTask('phase1', task.id)} aria-label="Remove task">✕</Button>
                     </div>
-                    <div className="ml-6 mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                      {(task.startDate || task.endDate) && (
-                        <span>{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
-                      )}
-                      {task.remarks && <span className="italic">{task.remarks}</span>}
+                    <div className="grid grid-cols-2 gap-2 pl-6">
+                      <Input type="date" value={task.startDate} onChange={(e) => handleUpdateTask('phase1', task.id, { startDate: e.target.value })} />
+                      <Input type="date" value={task.endDate} onChange={(e) => handleUpdateTask('phase1', task.id, { endDate: e.target.value })} />
                     </div>
-                  </li>
+                    <div className="grid grid-cols-2 gap-2 pl-6">
+                      <Input value={task.remarks} placeholder="Remarks" onChange={(e) => handleUpdateTask('phase1', task.id, { remarks: e.target.value })} />
+                      <Select value={task.department ?? ''} onValueChange={(val) => handleUpdateTask('phase1', task.id, { department: val ?? '' })}>
+                        <SelectTrigger className="w-full" aria-label="Department"><SelectValue placeholder="Department" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">None</SelectItem>
+                          {departments.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 ))}
-              </ul>
-            </div>
-          )}
+              </fieldset>
 
-          {draft.phase1.tasks.length > 0 && draft.phase2.tasks.length > 0 && (
-            <Separator className="my-4" />
-          )}
-
-          {draft.phase2.tasks.length > 0 && (
-            <div className="mt-4">
-              <p className="text-sm font-semibold">Phase 2</p>
-              <ul className="mt-2 space-y-2">
+              {/* Phase 2 */}
+              <fieldset className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <legend className="text-sm font-semibold">Phase 2</legend>
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleAddTask('phase2')}>+ Add task</Button>
+                </div>
                 {draft.phase2.tasks.map((task) => (
-                  <li key={task.id} className="text-sm">
+                  <div key={task.id} className="rounded-lg border border-border/50 p-3 space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className={`size-4 shrink-0 rounded-full border ${task.done ? 'border-green-500 bg-green-500' : 'border-muted-foreground/40'}`} />
-                      <span className={task.done ? 'text-muted-foreground line-through' : ''}>
-                        {task.label || 'Untitled task'}
-                      </span>
-                      {task.department && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{task.department}</Badge>
-                      )}
+                      <input
+                        type="checkbox"
+                        checked={task.done}
+                        onChange={(e) => handleUpdateTask('phase2', task.id, { done: e.target.checked })}
+                        className="size-4 shrink-0 rounded border-input accent-primary"
+                        aria-label={`Mark "${task.label || 'task'}" as done`}
+                      />
+                      <Input value={task.label} placeholder="Task description" onChange={(e) => handleUpdateTask('phase2', task.id, { label: e.target.value })} className="flex-1" />
+                      <Button type="button" variant="ghost" size="icon-xs" onClick={() => handleRemoveTask('phase2', task.id)} aria-label="Remove task">✕</Button>
                     </div>
-                    <div className="ml-6 mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                      {(task.startDate || task.endDate) && (
-                        <span>{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
-                      )}
-                      {task.remarks && <span className="italic">{task.remarks}</span>}
+                    <div className="grid grid-cols-2 gap-2 pl-6">
+                      <Input type="date" value={task.startDate} onChange={(e) => handleUpdateTask('phase2', task.id, { startDate: e.target.value })} />
+                      <Input type="date" value={task.endDate} onChange={(e) => handleUpdateTask('phase2', task.id, { endDate: e.target.value })} />
                     </div>
-                  </li>
+                    <div className="grid grid-cols-2 gap-2 pl-6">
+                      <Input value={task.remarks} placeholder="Remarks" onChange={(e) => handleUpdateTask('phase2', task.id, { remarks: e.target.value })} />
+                      <Select value={task.department ?? ''} onValueChange={(val) => handleUpdateTask('phase2', task.id, { department: val ?? '' })}>
+                        <SelectTrigger className="w-full" aria-label="Department"><SelectValue placeholder="Department" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">None</SelectItem>
+                          {departments.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </fieldset>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+
+            {/* ── Save / Publish buttons ── */}
+            <div className="mt-6 flex gap-3 border-t border-border/50 pt-4">
+              <Button type="submit">Save draft</Button>
+              <Button type="button" variant="secondary" onClick={handlePublish}>Publish to dashboard</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
