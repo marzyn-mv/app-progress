@@ -25,7 +25,7 @@ const statusVariant = (status: Project['status']) => {
   }
 };
 
-export default function DashboardPage() {
+export default function HomePage() {
   const [published, setPublished] = useState<Project | null>(null);
 
   useEffect(() => {

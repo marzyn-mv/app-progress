@@ -8,7 +8,7 @@ import './globals.css';
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'KCC Status',
+  title: 'KCC Apps Status Dashboard',
   description: 'Council project status dashboard.',
 };
 
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           className="sticky top-0 z-20 flex items-center justify-between gap-6 border-b border-border/25 bg-white/82 px-6 py-4 backdrop-blur-sm"
           role="banner"
         >
-          <div className="text-base font-extrabold text-foreground">KCC Status</div>
+          <div className="text-base font-extrabold text-foreground">KCC Apps Status Dashboard</div>
         </header>
 
         <main id="main-content" role="main">
