@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Geist } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/sonner';
@@ -26,14 +25,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           role="banner"
         >
           <div className="text-base font-extrabold text-foreground">KCC Status</div>
-          <nav aria-label="Main navigation" className="flex gap-2">
-            <Link
-              href="/"
-              className="rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-indigo-500/10 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              Dashboard
-            </Link>
-          </nav>
         </header>
 
         <main id="main-content" role="main">

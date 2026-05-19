@@ -43,10 +43,9 @@ export default function DashboardPage() {
         <Badge variant="secondary" className="mb-3">
           Shared dashboard
         </Badge>
-        <h1 className="text-3xl font-bold tracking-tight">Visible to all boards</h1>
+        <h1 className="text-3xl font-bold tracking-tight">What we are building</h1>
         <p className="mt-2 text-muted-foreground">
-          This dashboard shows the published project only. Publish a project from the editor to
-          make it visible here.
+          Every automation system being delivered to Kulhudhuffushi City Council — what it does, where it stands, and why it matters.
         </p>
       </header>
 
