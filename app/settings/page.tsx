@@ -203,26 +203,27 @@ const initialProject: Project = {
   title: 'SSO System',
   status: 'STAGING',
   progress: 95,
-  startDate: '2025-02-20',
-  endDate: '2025-02-22',
-  launchDate: '2026-06-01',
+  startDate: '2026-02-20',
+  endDate: '2026-02-22',
+  launchDate: '2027-06-01',
   description:
     'Single Sign-On (SSO) system integrated with eFast for user authentication and authorization. Validates users and employees against the HR system upon login.',
   why:
     'One login for every Council system. Employees stop juggling multiple passwords, IT spends less time on password resets, and access is automatically aligned with each person\'s HR record — improving security, accountability, and the day-one experience for new joiners.',
   actionPoints: [],
   departments: [],
+  parentId: '',
   phase1: {
     tasks: [
-      { id: '1', label: 'Requirements gathering', done: true, startDate: '2025-02-20', endDate: '2025-03-01', remarks: 'Completed on schedule', department: '' },
-      { id: '2', label: 'UI/UX design', done: true, startDate: '2025-03-02', endDate: '2025-03-15', remarks: '', department: '' },
-      { id: '3', label: 'Backend API development', done: true, startDate: '2025-03-16', endDate: '2025-04-30', remarks: '', department: '' },
+      { id: '1', label: 'Requirements gathering', done: true, startDate: '2026-02-20', endDate: '2026-03-01', remarks: 'Completed on schedule', department: '' },
+      { id: '2', label: 'UI/UX design', done: true, startDate: '2026-03-02', endDate: '2026-03-15', remarks: '', department: '' },
+      { id: '3', label: 'Backend API development', done: true, startDate: '2026-03-16', endDate: '2026-04-30', remarks: '', department: '' },
     ],
   },
   phase2: {
     tasks: [
-      { id: '4', label: 'Integration testing', done: true, startDate: '2025-05-01', endDate: '2025-05-15', remarks: '', department: '' },
-      { id: '5', label: 'User acceptance testing', done: false, startDate: '2025-05-16', endDate: '', remarks: 'In progress', department: '' },
+      { id: '4', label: 'Integration testing', done: true, startDate: '2026-05-01', endDate: '2026-05-15', remarks: '', department: '' },
+      { id: '5', label: 'User acceptance testing', done: false, startDate: '2026-05-16', endDate: '', remarks: 'In progress', department: '' },
       { id: '6', label: 'Production deployment', done: false, startDate: '', endDate: '', remarks: '', department: '' },
     ],
   },
@@ -240,6 +241,7 @@ const createNewProject = (): Project => ({
   why: 'Explain why this project matters to the Council.',
   actionPoints: [],
   departments: [],
+  parentId: '',
   phase1: { tasks: [] },
   phase2: { tasks: [] },
 });
@@ -273,6 +275,7 @@ function EditorSection({ departments }: { departments: string[] }) {
             ...p,
             actionPoints: (p.actionPoints ?? []).map((ap) => ({ ...ap, department: ap.department ?? '', dueDate: ap.dueDate ?? '' })),
             departments: p.departments ?? [],
+            parentId: p.parentId ?? '',
             phase1: { tasks: (p.phase1?.tasks ?? []).map((t) => ({ ...t, department: t.department ?? '' })) },
             phase2: { tasks: (p.phase2?.tasks ?? []).map((t) => ({ ...t, department: t.department ?? '' })) },
           }));
@@ -581,6 +584,21 @@ function EditorSection({ departments }: { departments: string[] }) {
                 <Label htmlFor="launchDate">Launch date</Label>
                 <Input id="launchDate" type="date" value={draft.launchDate} onChange={(e) => handleChange('launchDate', e.target.value)} />
               </div>
+            </div>
+
+            {/* ── Parent Project ── */}
+            <div className="mt-4 space-y-2">
+              <Label htmlFor="parentId">Parent project</Label>
+              <Select value={draft.parentId || '_none'} onValueChange={(val) => handleChange('parentId', val === '_none' ? '' : val ?? '')}>
+                <SelectTrigger id="parentId" className="w-full" aria-label="Parent project"><SelectValue placeholder="None (top-level project)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">None (top-level project)</SelectItem>
+                  {projects.filter((p) => p.id !== draft.id).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">If set, this project becomes a sub-module of the selected parent.</p>
             </div>
 
             {/* ── Description & Why ── */}

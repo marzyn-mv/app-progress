@@ -31,6 +31,7 @@ export type Project = {
   why: string;
   actionPoints: ActionPoint[];
   departments: string[];
+  parentId: string;
   phase1: Phase;
   phase2: Phase;
 };
