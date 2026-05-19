@@ -289,31 +289,6 @@ export default function TimelinePage() {
             <p className="mt-1 text-sm text-muted-foreground">
               {timed.length} projects
             </p>
-            <div className="mt-3 flex gap-1.5">
-              <button
-                onClick={() => setActiveYear("all")}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                  activeYear === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                All
-              </button>
-              {allYears.map((y) => (
-                <button
-                  key={y}
-                  onClick={() => setActiveYear(y)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    activeYear === y
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
-                >
-                  {y}
-                </button>
-              ))}
-            </div>
           </div>
           <Link
             href="/"
@@ -324,13 +299,29 @@ export default function TimelinePage() {
           </Link>
         </header>
 
+        {/* Legend */}
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-8 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-300" />
+            <span>Development period</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="rounded bg-indigo-500 px-1 py-0.5 text-[9px] font-bold text-white leading-none">Launch</div>
+            <span>Launch date</span>
+          </div>
+          {showToday && (
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-px bg-red-500" />
+              <span>Today</span>
+            </div>
+          )}
+        </div>
+
         {/* Timeline chart */}
         <div ref={wrapRef} className="rounded-xl border bg-card overflow-hidden">
           <div className="flex">
             {/* Fixed label column */}
             <div className="shrink-0 border-r bg-card z-10" style={{ width: LABEL_WIDTH }}>
-              {/* Year header placeholder */}
-              <div className="h-8 border-b" />
               {/* Month header placeholder */}
               <div className="h-8 border-b" />
               {/* Project labels */}
@@ -357,18 +348,6 @@ export default function TimelinePage() {
             {/* Scrollable chart area */}
             <div ref={scrollRef} className="flex-1 overflow-hidden">
               <div style={{ width: chartWidth, minWidth: "100%" }}>
-                {/* Year headers */}
-                <div className="flex h-8 border-b">
-                  {yearSpans.map((ys) => (
-                    <div
-                      key={ys.year}
-                      className="flex items-center justify-center text-xs font-bold text-muted-foreground"
-                      style={{ width: ys.count * monthWidth }}
-                    >
-                      {ys.year}
-                    </div>
-                  ))}
-                </div>
 
                 {/* Month headers */}
                 <div className="flex h-8 border-b">
@@ -483,24 +462,7 @@ export default function TimelinePage() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Legend */}
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-8 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-300" />
-            <span>Development period</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="rounded bg-indigo-500 px-1 py-0.5 text-[9px] font-bold text-white leading-none">Launch</div>
-            <span>Launch date</span>
-          </div>
-          {showToday && (
-            <div className="flex items-center gap-1.5">
-              <div className="h-3 w-px bg-red-500" />
-              <span>Today</span>
-            </div>
-          )}
         </div>
 
         <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
