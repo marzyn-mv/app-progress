@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(rm:*)",
+      "WebFetch(domain:react-grep.com)",
+      "Bash(npm install:*)",
+      "Bash(npx next:*)"
+    ]
+  }
+}
