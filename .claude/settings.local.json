@@ -6,7 +6,10 @@
       "WebFetch(domain:react-grep.com)",
       "Bash(npm install:*)",
       "Bash(npx next:*)",
-      "Bash(npx shadcn@latest:*)"
+      "Bash(npx shadcn@latest:*)",
+      "WebFetch(domain:kcc-app.com)",
+      "Bash(set:*)",
+      "Bash(export:*)"
     ]
   }
 }

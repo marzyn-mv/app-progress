@@ -176,6 +176,27 @@ export default function HomePage() {
         </p>
       </header>
 
+      {projects.length > 0 && (
+        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <Card className="p-4 text-center">
+            <p className="text-2xl font-bold">{projects.length}</p>
+            <p className="text-xs text-muted-foreground">Total</p>
+          </Card>
+          <Card className="p-4 text-center">
+            <p className="text-2xl font-bold text-green-600">{projects.filter(p => p.status === 'STAGING').length}</p>
+            <p className="text-xs text-muted-foreground">Staging</p>
+          </Card>
+          <Card className="p-4 text-center">
+            <p className="text-2xl font-bold text-blue-600">{projects.filter(p => p.status === 'DEVELOPING').length}</p>
+            <p className="text-xs text-muted-foreground">Developing</p>
+          </Card>
+          <Card className="p-4 text-center">
+            <p className="text-2xl font-bold text-amber-600">{projects.filter(p => p.status === 'PENDING').length}</p>
+            <p className="text-xs text-muted-foreground">Pending</p>
+          </Card>
+        </div>
+      )}
+
       {projects.length === 0 ? (
         <div className="rounded-xl bg-destructive/8 p-6 text-center text-destructive" role="status">
           <p>No projects yet. Add a project from the settings page.</p>
