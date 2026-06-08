@@ -177,11 +177,9 @@ function ParentProjectCard({
                 <div className="mt-3">
                   <GradientProgress value={project.progress} from={pColor[0]} to={pColor[1]} />
                 </div>
-                {project.launchDate && (
-                  <p className="mt-2 text-[11px] text-muted-foreground">
-                    Launch {formatDate(project.launchDate)}
-                  </p>
-                )}
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Launch {project.launchDate ? formatDate(project.launchDate) : "Not Set"}
+                </p>
               </div>
             );
           })}
@@ -210,9 +208,7 @@ function ProjectDetailModal({ project, color }: { project: Project; color: [stri
 
       <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
         <span>{formatDate(project.startDate)} &rarr; {formatDate(project.endDate)}</span>
-        {project.launchDate && (
-          <span className="font-medium" style={{ color: color[0] }}>Launch {formatDate(project.launchDate)}</span>
-        )}
+        <span className="font-medium" style={{ color: color[0] }}>Launch {project.launchDate ? formatDate(project.launchDate) : "Not Set"}</span>
       </div>
 
       <p className="mt-4 leading-7 text-foreground/80">{project.description}</p>
