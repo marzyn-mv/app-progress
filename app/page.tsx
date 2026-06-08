@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { Project } from '@/lib/types';
+import type { Project, ParentProject } from '@/lib/types';
 
 const BRAND_COLORS: [string, string][] = [
   ['#6366f1', '#818cf8'], // indigo
@@ -55,6 +55,7 @@ const formatDate = (dateStr: string) => {
 
 const statusLabel = (status: Project['status']) => {
   switch (status) {
+    case 'DEPLOYED': return 'Deployed';
     case 'STAGING': return 'Staging';
     case 'DEVELOPING': return 'Developing';
     case 'PENDING': return 'Pending';
@@ -75,9 +76,9 @@ function GradientProgress({ value, from, to }: { value: number; from: string; to
   );
 }
 
-function ProjectDetail({ project, color, allProjects, colorMap }: { project: Project; color: [string, string]; allProjects: Project[]; colorMap: Map<string, [string, string]> }) {
-  const subModules = allProjects.filter(p => p.parentId === project.id);
-  const parent = project.parentId ? allProjects.find(p => p.id === project.parentId) : null;
+function ProjectDetail({ project, color, allProjects, colorMap, parentProjects }: { project: Project; color: [string, string]; allProjects: Project[]; colorMap: Map<string, [string, string]>; parentProjects: ParentProject[] }) {
+  const subModules = allProjects.filter(p => p.parentId === project.parentId && p.parentId && p.id !== project.id);
+  const parent = project.parentId ? parentProjects.find(p => p.id === project.parentId) : null;
 
   return (
     <>
@@ -208,7 +209,7 @@ function ProjectDetail({ project, color, allProjects, colorMap }: { project: Pro
         <>
           <Separator className="my-5" />
           <div>
-            <p className="text-sm font-semibold mb-3">Modules of this project</p>
+            <p className="text-sm font-semibold mb-3">Related modules</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {subModules.map((sub) => {
                 const subColor = colorMap.get(sub.id) || color;
@@ -250,14 +251,19 @@ function ProjectDetail({ project, color, allProjects, colorMap }: { project: Pro
 
 export default function HomePage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [parentProjects, setParentProjects] = useState<ParentProject[]>([]);
   const [selected, setSelected] = useState<Project | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<Project['status'] | null>(null);
 
   useEffect(() => {
-    fetch('/api/projects')
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setProjects(data);
+    Promise.all([
+      fetch('/api/projects').then((r) => r.json()),
+      fetch('/api/parent-projects').then((r) => r.json()),
+    ])
+      .then(([projectsData, ppData]) => {
+        if (Array.isArray(projectsData)) setProjects(projectsData);
+        if (Array.isArray(ppData)) setParentProjects(ppData);
       })
       .catch(() => {});
   }, []);
@@ -265,6 +271,7 @@ export default function HomePage() {
   const colorMap = new Map<string, [string, string]>();
   projects.forEach((p, i) => colorMap.set(p.id, getBrandColor(i)));
 
+  const deployed = projects.filter(p => p.status === 'DEPLOYED').length;
   const staging = projects.filter(p => p.status === 'STAGING').length;
   const developing = projects.filter(p => p.status === 'DEVELOPING').length;
   const pending = projects.filter(p => p.status === 'PENDING').length;
@@ -280,13 +287,22 @@ export default function HomePage() {
         <p className="mt-2 text-muted-foreground">
           Every automation system being delivered to Kulhudhuffushi City Council — what it does, where it stands, and why it matters.
         </p>
-        <Link
-          href="/timeline"
-          className="mt-4 inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Delivery Timeline
-        </Link>
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <Link
+            href="/projects"
+            className="inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Projects
+          </Link>
+          <Link
+            href="/timeline"
+            className="inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Delivery Timeline
+          </Link>
+        </div>
       </header>
 
       {projects.length > 0 && (
@@ -310,23 +326,23 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border bg-card p-4 text-center">
-              <p className="text-3xl font-bold">{projects.length}</p>
-              <p className="mt-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">Total</p>
-            </div>
-            <div className="rounded-xl border bg-card p-4 text-center">
-              <p className="text-3xl font-bold text-emerald-500">{staging}</p>
-              <p className="mt-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">Staging</p>
-            </div>
-            <div className="rounded-xl border bg-card p-4 text-center">
-              <p className="text-3xl font-bold text-blue-500">{developing}</p>
-              <p className="mt-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">Developing</p>
-            </div>
-            <div className="rounded-xl border bg-card p-4 text-center">
-              <p className="text-3xl font-bold text-amber-500">{pending}</p>
-              <p className="mt-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending</p>
-            </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {([
+              { key: null, count: projects.length, color: '', label: 'Total' },
+              { key: 'DEPLOYED' as const, count: deployed, color: 'text-green-600', label: 'Deployed' },
+              { key: 'STAGING' as const, count: staging, color: 'text-emerald-500', label: 'Staging' },
+              { key: 'DEVELOPING' as const, count: developing, color: 'text-blue-500', label: 'Developing' },
+              { key: 'PENDING' as const, count: pending, color: 'text-amber-500', label: 'Pending' },
+            ] as const).map(({ key, count, color, label }) => (
+              <div
+                key={label}
+                className={`cursor-pointer rounded-xl border p-4 text-center transition-all hover:shadow-md ${statusFilter === key ? 'ring-2 ring-primary bg-muted' : 'bg-card'}`}
+                onClick={() => setStatusFilter(statusFilter === key ? null : key)}
+              >
+                <p className={`text-3xl font-bold ${color}`}>{count}</p>
+                <p className="mt-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -337,7 +353,8 @@ export default function HomePage() {
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project, i) => {
+          {projects.filter(p => !statusFilter || p.status === statusFilter).map((project) => {
+            const i = projects.indexOf(project);
             const [from, to] = getBrandColor(i);
             return (
               <Card
@@ -401,7 +418,7 @@ export default function HomePage() {
               <DialogHeader>
                 <DialogTitle>{selected.title}</DialogTitle>
               </DialogHeader>
-              <ProjectDetail project={selected} color={getBrandColor(selectedIndex)} allProjects={projects} colorMap={colorMap} />
+              <ProjectDetail project={selected} color={getBrandColor(selectedIndex)} allProjects={projects} colorMap={colorMap} parentProjects={parentProjects} />
             </>
           )}
         </DialogContent>

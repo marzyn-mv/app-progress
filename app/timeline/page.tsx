@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Project } from "@/lib/types";
+import type { Project, ParentProject } from "@/lib/types";
 
 const BRAND_COLORS: [string, string][] = [
   ["#6366f1", "#818cf8"],
@@ -57,6 +57,7 @@ const formatDate = (dateStr: string) => {
 
 const statusLabel = (status: Project["status"]) => {
   switch (status) {
+    case "DEPLOYED": return "Deployed";
     case "STAGING": return "Staging";
     case "DEVELOPING": return "Developing";
     case "PENDING": return "Pending";
@@ -74,9 +75,9 @@ function GradientProgress({ value, from, to }: { value: number; from: string; to
   );
 }
 
-function ProjectDetail({ project, color, allProjects, colorMap }: { project: Project; color: [string, string]; allProjects: Project[]; colorMap: Map<string, [string, string]> }) {
-  const subModules = allProjects.filter(p => p.parentId === project.id);
-  const parent = project.parentId ? allProjects.find(p => p.id === project.parentId) : null;
+function ProjectDetail({ project, color, allProjects, colorMap, parentProjects }: { project: Project; color: [string, string]; allProjects: Project[]; colorMap: Map<string, [string, string]>; parentProjects: ParentProject[] }) {
+  const subModules = allProjects.filter(p => p.parentId === project.parentId && p.parentId && p.id !== project.id);
+  const parent = project.parentId ? parentProjects.find(p => p.id === project.parentId) : null;
 
   return (
     <>
@@ -118,7 +119,7 @@ function ProjectDetail({ project, color, allProjects, colorMap }: { project: Pro
         <>
           <Separator className="my-5" />
           <div>
-            <p className="text-sm font-semibold mb-3">Modules of this project</p>
+            <p className="text-sm font-semibold mb-3">Related modules</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {subModules.map((sub) => {
                 const subColor = colorMap.get(sub.id) || color;
@@ -184,6 +185,7 @@ function dayOffset(date: Date, origin: Date): number {
 
 export default function TimelinePage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [parentProjects, setParentProjects] = useState<ParentProject[]>([]);
   const [activeYear, setActiveYear] = useState<number | "all">("all");
   const [selected, setSelected] = useState<Project | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -202,10 +204,13 @@ export default function TimelinePage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/projects")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setProjects(data);
+    Promise.all([
+      fetch("/api/projects").then((r) => r.json()),
+      fetch("/api/parent-projects").then((r) => r.json()),
+    ])
+      .then(([projectsData, ppData]) => {
+        if (Array.isArray(projectsData)) setProjects(projectsData);
+        if (Array.isArray(ppData)) setParentProjects(ppData);
       })
       .catch(() => {});
   }, []);
@@ -477,6 +482,7 @@ export default function TimelinePage() {
                   color={colorMap.get(selected.id) || getBrandColor(0)}
                   allProjects={projects}
                   colorMap={colorMap}
+                  parentProjects={parentProjects}
                 />
               </>
             )}

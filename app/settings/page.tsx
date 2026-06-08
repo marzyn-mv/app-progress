@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import type { Task, Project } from '@/lib/types';
+import type { Task, Project, ParentProject } from '@/lib/types';
 
 /* ── Password Gate ── */
 
@@ -189,6 +189,122 @@ function DepartmentsSection({
   );
 }
 
+/* ── Parent Projects Section ── */
+
+function ParentProjectsSection({
+  parentProjects,
+  onUpdate,
+}: {
+  parentProjects: ParentProject[];
+  onUpdate: (next: ParentProject[]) => void;
+}) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+
+  const save = async (next: ParentProject[]) => {
+    onUpdate(next);
+    await fetch('/api/parent-projects', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(next),
+    });
+  };
+
+  const handleAdd = () => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+    if (parentProjects.some((p) => p.title === trimmed)) {
+      toast.warning('Parent project already exists.');
+      return;
+    }
+    const newParent: ParentProject = {
+      id: crypto.randomUUID(),
+      title: trimmed,
+    };
+    save([...parentProjects, newParent]);
+    setNewTitle('');
+    setModalOpen(false);
+    toast.success(`Added "${trimmed}".`);
+  };
+
+  const handleRemove = (id: string) => {
+    const removed = parentProjects.find((p) => p.id === id);
+    save(parentProjects.filter((p) => p.id !== id));
+    toast.success(`Removed "${removed?.title}".`);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Parent Projects</CardTitle>
+          <Button variant="outline" size="sm" onClick={() => setModalOpen(true)}>
+            + New
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {parentProjects.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No parent projects yet. Create one to group sub-modules.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {parentProjects.map((pp) => (
+              <li
+                key={pp.id}
+                className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2"
+              >
+                <span className="text-sm">{pp.title}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemove(pp.id)}
+                >
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>New Parent Project</DialogTitle>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAdd();
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="parentProjectTitle">Title</Label>
+                <Input
+                  id="parentProjectTitle"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="e.g. Digital Transformation"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Create</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ── Editor Section (from original page.tsx) ── */
 
 const formatDate = (dateStr: string) => {
@@ -248,6 +364,8 @@ const createNewProject = (): Project => ({
 
 const statusVariant = (status: Project['status']) => {
   switch (status) {
+    case 'DEPLOYED':
+      return 'default' as const;
     case 'STAGING':
       return 'default' as const;
     case 'DEVELOPING':
@@ -257,7 +375,7 @@ const statusVariant = (status: Project['status']) => {
   }
 };
 
-function EditorSection({ departments }: { departments: string[] }) {
+function EditorSection({ departments, parentProjects }: { departments: string[]; parentProjects: ParentProject[] }) {
   const [projects, setProjects] = useState<Project[]>([initialProject]);
   const [selectedId, setSelectedId] = useState<string>(initialProject.id);
   const [draft, setDraft] = useState<Project>(initialProject);
@@ -560,6 +678,7 @@ function EditorSection({ departments }: { departments: string[] }) {
                       <SelectItem value="PENDING">PENDING</SelectItem>
                       <SelectItem value="DEVELOPING">DEVELOPING</SelectItem>
                       <SelectItem value="STAGING">STAGING</SelectItem>
+                      <SelectItem value="DEPLOYED">DEPLOYED</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -593,8 +712,8 @@ function EditorSection({ departments }: { departments: string[] }) {
                 <SelectTrigger id="parentId" className="w-full" aria-label="Parent project"><SelectValue placeholder="None (top-level project)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_none">None (top-level project)</SelectItem>
-                  {projects.filter((p) => p.id !== draft.id).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                  {parentProjects.map((pp) => (
+                    <SelectItem key={pp.id} value={pp.id}>{pp.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -742,13 +861,17 @@ function EditorSection({ departments }: { departments: string[] }) {
 export default function SettingsPage() {
   const [unlocked, setUnlocked] = useState(false);
   const [departments, setDepartments] = useState<string[]>(DEFAULT_DEPARTMENTS);
+  const [parentProjects, setParentProjects] = useState<ParentProject[]>([]);
 
   useEffect(() => {
     if (!unlocked) return;
-    fetch('/api/departments')
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setDepartments(data);
+    Promise.all([
+      fetch('/api/departments').then((r) => r.json()),
+      fetch('/api/parent-projects').then((r) => r.json()),
+    ])
+      .then(([deptData, ppData]) => {
+        if (Array.isArray(deptData)) setDepartments(deptData);
+        if (Array.isArray(ppData)) setParentProjects(ppData);
       })
       .catch(() => {});
   }, [unlocked]);
@@ -769,11 +892,12 @@ export default function SettingsPage() {
         </p>
       </header>
 
-      <EditorSection departments={departments} />
+      <EditorSection departments={departments} parentProjects={parentProjects} />
 
       <Separator className="my-8" />
 
-      <div className="mx-auto max-w-lg">
+      <div className="mx-auto max-w-lg space-y-6">
+        <ParentProjectsSection parentProjects={parentProjects} onUpdate={setParentProjects} />
         <DepartmentsSection departments={departments} onUpdate={setDepartments} />
       </div>
     </div>

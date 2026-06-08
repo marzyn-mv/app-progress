@@ -19,10 +19,15 @@ export type ActionPoint = {
   dueDate: string;
 };
 
+export type ParentProject = {
+  id: string;
+  title: string;
+};
+
 export type Project = {
   id: string;
   title: string;
-  status: "PENDING" | "DEVELOPING" | "STAGING";
+  status: "PENDING" | "DEVELOPING" | "STAGING" | "DEPLOYED";
   progress: number;
   startDate: string;
   endDate: string;
