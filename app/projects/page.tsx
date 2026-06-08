@@ -100,9 +100,21 @@ function ParentProjectCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold tracking-tight">{parent.title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {children.length} module{children.length !== 1 ? "s" : ""}
-            </p>
+            <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+              <span>{children.length} module{children.length !== 1 ? "s" : ""}</span>
+              {parent.link && (
+                <a
+                  href={parent.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  {parent.link}
+                </a>
+              )}
+            </div>
           </div>
           <div className="text-right shrink-0">
             <p className="text-3xl font-bold tabular-nums" style={{ color: color[0] }}>
@@ -361,7 +373,7 @@ export default function ProjectsPage() {
       ) : (
         <div className="space-y-8">
           {/* Parent projects with their children */}
-          {parentProjects.flatMap((pp, i, arr) => {
+          {[...parentProjects].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).flatMap((pp, i, arr) => {
             const children = grouped.get(pp.id) || [];
             if (children.length === 0) return [];
             const items = [

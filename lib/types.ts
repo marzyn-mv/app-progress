@@ -22,6 +22,8 @@ export type ActionPoint = {
 export type ParentProject = {
   id: string;
   title: string;
+  link: string;
+  order: number;
 };
 
 export type Project = {

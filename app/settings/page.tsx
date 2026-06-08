@@ -199,7 +199,10 @@ function ParentProjectsSection({
   onUpdate: (next: ParentProject[]) => void;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formTitle, setFormTitle] = useState('');
+  const [formLink, setFormLink] = useState('');
+  const [formOrder, setFormOrder] = useState(0);
 
   const save = async (next: ParentProject[]) => {
     onUpdate(next);
@@ -210,21 +213,52 @@ function ParentProjectsSection({
     });
   };
 
-  const handleAdd = () => {
-    const trimmed = newTitle.trim();
+  const openCreate = () => {
+    setEditingId(null);
+    setFormTitle('');
+    setFormLink('');
+    setFormOrder(parentProjects.length + 1);
+    setModalOpen(true);
+  };
+
+  const openEdit = (pp: ParentProject) => {
+    setEditingId(pp.id);
+    setFormTitle(pp.title);
+    setFormLink(pp.link || '');
+    setFormOrder(pp.order ?? 0);
+    setModalOpen(true);
+  };
+
+  const handleSubmit = () => {
+    const trimmed = formTitle.trim();
     if (!trimmed) return;
-    if (parentProjects.some((p) => p.title === trimmed)) {
-      toast.warning('Parent project already exists.');
-      return;
+
+    if (editingId) {
+      const next = parentProjects.map((p) =>
+        p.id === editingId ? { ...p, title: trimmed, link: formLink.trim(), order: formOrder } : p
+      );
+      save(next);
+      toast.success(`Updated "${trimmed}".`);
+    } else {
+      if (parentProjects.some((p) => p.title === trimmed)) {
+        toast.warning('Parent project already exists.');
+        return;
+      }
+      const newParent: ParentProject = {
+        id: crypto.randomUUID(),
+        title: trimmed,
+        link: formLink.trim(),
+        order: formOrder,
+      };
+      save([...parentProjects, newParent]);
+      toast.success(`Added "${trimmed}".`);
     }
-    const newParent: ParentProject = {
-      id: crypto.randomUUID(),
-      title: trimmed,
-    };
-    save([...parentProjects, newParent]);
-    setNewTitle('');
+
+    setFormTitle('');
+    setFormLink('');
+    setFormOrder(0);
+    setEditingId(null);
     setModalOpen(false);
-    toast.success(`Added "${trimmed}".`);
   };
 
   const handleRemove = (id: string) => {
@@ -238,7 +272,7 @@ function ParentProjectsSection({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Parent Projects</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => setModalOpen(true)}>
+          <Button variant="outline" size="sm" onClick={openCreate}>
             + New
           </Button>
         </div>
@@ -250,20 +284,40 @@ function ParentProjectsSection({
           </p>
         ) : (
           <ul className="space-y-2">
-            {parentProjects.map((pp) => (
+            {[...parentProjects].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((pp) => (
               <li
                 key={pp.id}
                 className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2"
               >
-                <span className="text-sm">{pp.title}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemove(pp.id)}
-                >
-                  Remove
-                </Button>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
+                    {pp.order ?? '-'}
+                  </span>
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium">{pp.title}</span>
+                    {pp.link && (
+                      <p className="truncate text-xs text-muted-foreground">{pp.link}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openEdit(pp)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemove(pp.id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
@@ -272,12 +326,12 @@ function ParentProjectsSection({
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>New Parent Project</DialogTitle>
+              <DialogTitle>{editingId ? 'Edit Parent Project' : 'New Parent Project'}</DialogTitle>
             </DialogHeader>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                handleAdd();
+                handleSubmit();
               }}
               className="space-y-4"
             >
@@ -285,17 +339,36 @@ function ParentProjectsSection({
                 <Label htmlFor="parentProjectTitle">Title</Label>
                 <Input
                   id="parentProjectTitle"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="e.g. Digital Transformation"
                   autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="parentProjectLink">Link</Label>
+                <Input
+                  id="parentProjectLink"
+                  value={formLink}
+                  onChange={(e) => setFormLink(e.target.value)}
+                  placeholder="https://example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="parentProjectOrder">Order</Label>
+                <Input
+                  id="parentProjectOrder"
+                  type="number"
+                  min={0}
+                  value={formOrder}
+                  onChange={(e) => setFormOrder(Number(e.target.value))}
                 />
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Create</Button>
+                <Button type="submit">{editingId ? 'Save' : 'Create'}</Button>
               </div>
             </form>
           </DialogContent>
